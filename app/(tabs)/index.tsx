@@ -26,11 +26,13 @@ import {
   View,
   TextInput,
   TouchableWithoutFeedback,
+  TouchableOpacity,
   FlatList,
   ScrollView,
 } from "react-native";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import DateTimePickerExample from "../../components/dateComponent/date";
+import Collapsible from "react-native-collapsible";
 import { useSQLiteContext } from "expo-sqlite";
 
 interface Note {
@@ -49,6 +51,13 @@ export default function HomeScreen() {
   const [date, setDate] = useState<Date>(new Date());
   const [notesView, setNotesView] = useState<Note[]>([]);
   const db = useSQLiteContext();
+
+  // const [isCollapsed, setIsCollapsed] = useState(true);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+
+  // const toggleCollapsed = () => {
+  //   setIsCollapsed(!isCollapsed);
+  // };
 
   const getNotes = async () => {
     try {
@@ -92,6 +101,43 @@ export default function HomeScreen() {
     }
   }
 
+  async function deleteNote(id: number) {
+    try {
+      await db.runAsync("DELETE FROM notes WHERE id = ?", [id]);
+
+      // Обновляем список заметок после добавления
+      await getNotes();
+    } catch (error) {
+      console.error("Error delete note:", error);
+    }
+  }
+
+  async function changeNote(id: number) {
+    try {
+      if (!title?.trim() || !discription?.trim()) {
+        Alert.alert("Ошибка", "Заголовок и описание не могут быть пустыми");
+        return;
+      }
+
+      const formattedDate = date.toISOString().split("T")[0];
+      const formattedTime = date.toTimeString().split(" ")[0];
+
+      await db.runAsync(
+        `UPDATE notes SET title = ?, content = ?, date = ?, time = ? WHERE id = ?`,
+        [title.trim(), discription.trim(), formattedDate, formattedTime, id]
+      );
+      console.log("Note updated successfully");
+      // Обновляем список заметок после добавления
+      await getNotes();
+
+      setTitle("");
+      setDiscription("");
+      setExpandedId(null);
+    } catch (error) {
+      console.error("Error adding note:", error);
+    }
+  }
+
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.container}>
@@ -120,6 +166,56 @@ export default function HomeScreen() {
               <Text style={styles.noteDate}>
                 {new Date(item.createdAt).toLocaleDateString()} - {item.time}
               </Text>
+              <View style={styles.buttonsContainer}>
+                <TouchableOpacity
+                  style={styles.buttonDelete}
+                  onPress={() => deleteNote(item.id)}
+                >
+                  <Text>Удалить</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.buttonChange}
+                  onPress={() =>
+                    setExpandedId(expandedId === item.id ? null : item.id)
+                  }
+                >
+                  <Text>Изменить</Text>
+                </TouchableOpacity>
+              </View>
+              <Collapsible collapsed={expandedId !== item.id}>
+                <View style={styles.contentAccordion}>
+                  <Text style={styles.modalText}>Введите заголовок</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={title}
+                    onChangeText={setTitle}
+                    placeholder="Введите заголовок"
+                    keyboardType="default"
+                    autoCorrect={true}
+                    autoCapitalize="sentences"
+                  />
+                  <Text style={styles.modalText}>Введите содержание</Text>
+                  <TextInput
+                    style={[styles.input, styles.multilineInput]}
+                    value={discription}
+                    onChangeText={setDiscription}
+                    placeholder="Введите содержание"
+                    keyboardType="default"
+                    autoCorrect={true}
+                    autoCapitalize="sentences"
+                    multiline
+                  />
+
+                  <DateTimePickerExample date={date} onDateChange={setDate} />
+
+                  <Pressable
+                    style={[styles.button, styles.buttonClose]}
+                    onPress={() => changeNote(item.id)}
+                  >
+                    <Text style={styles.textStyle}>Сохранить</Text>
+                  </Pressable>
+                </View>
+              </Collapsible>
             </View>
           )}
           ListEmptyComponent={
@@ -288,5 +384,32 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginTop: 50,
+  },
+  buttonsContainer: {
+    width: "100%",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 20,
+  },
+  buttonDelete: {
+    width: "45%",
+    backgroundColor: "#D8D9F2",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 20,
+    height: 30,
+  },
+  buttonChange: {
+    width: "45%",
+    backgroundColor: "#8E7CA6",
+    alignItems: "center",
+    borderRadius: 20,
+    height: 30,
+    justifyContent: "center",
+  },
+
+  contentAccordion: {
+    marginTop: 20,
   },
 });

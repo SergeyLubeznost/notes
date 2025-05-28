@@ -72,7 +72,7 @@ export default function TabTwoScreen() {
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView>
+      <SafeAreaView style={styles.safeArea}>
         <ScrollView
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -93,6 +93,7 @@ export default function TabTwoScreen() {
               getNotes(text); // Вызываем поиск при каждом изменении текста
             }}
             placeholder="Поиск по названию или дате (ГГГГ-ММ-ДД)"
+            placeholderTextColor="#999" // Добавляем цвет плейсхолдера
             keyboardType="default"
             autoCorrect={true}
             autoCapitalize="none"
@@ -141,6 +142,10 @@ export default function TabTwoScreen() {
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+  flex: 1,
+  backgroundColor: '#fff',
+},
   headerImage: {
     color: "#808080",
     bottom: -90,
@@ -154,6 +159,7 @@ const styles = StyleSheet.create({
   input: {
     width: "100%",
     height: 40,
+      color: 'black', 
     marginVertical: 10,
     borderWidth: 1,
     borderColor: "#ccc",

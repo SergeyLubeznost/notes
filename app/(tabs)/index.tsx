@@ -75,6 +75,8 @@ export default function HomeScreen() {
     getNotes();
   }, []);
 
+  
+
   async function addNote() {
     try {
       if (!title?.trim() || !discription?.trim()) {
@@ -192,6 +194,7 @@ export default function HomeScreen() {
                     placeholder="Введите заголовок"
                     keyboardType="default"
                     autoCorrect={true}
+                    returnKeyType="done" 
                     autoCapitalize="sentences"
                   />
                   <Text style={styles.modalText}>Введите содержание</Text>
@@ -202,6 +205,7 @@ export default function HomeScreen() {
                     placeholder="Введите содержание"
                     keyboardType="default"
                     autoCorrect={true}
+                    returnKeyType="done" 
                     autoCapitalize="sentences"
                     multiline
                   />
@@ -243,6 +247,11 @@ export default function HomeScreen() {
                 keyboardType="default"
                 autoCorrect={true}
                 autoCapitalize="sentences"
+                
+  
+ 
+  returnKeyType="done" // Добавляем кнопку "Готово"
+  blurOnSubmit={true} // Сворачивает клавиатуру при нажатии "Готово"
               />
 
               <Text style={styles.modalText}>Введите содержание</Text>
@@ -254,7 +263,9 @@ export default function HomeScreen() {
                 keyboardType="default"
                 autoCorrect={true}
                 autoCapitalize="sentences"
+                returnKeyType="done" 
                 multiline
+ blurOnSubmit={false} //
               />
 
               <DateTimePickerExample date={date} onDateChange={setDate} />

@@ -1,110 +1,244 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { useSQLiteContext } from "expo-sqlite";
+import React, { useState, useEffect } from "react";
+import {
+  Alert,
+  Modal,
+  StyleSheet,
+  Text,
+  Pressable,
+  View,
+  TextInput,
+  TouchableWithoutFeedback,
+  TouchableOpacity,
+  FlatList,
+  ScrollView,
+  RefreshControl,
+} from "react-native";
 
-import { Collapsible } from '@/components/Collapsible';
-import { ExternalLink } from '@/components/ExternalLink';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { IconSymbol } from '@/components/ui/IconSymbol';
-
+import { Image } from "expo-image";
+import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 export default function TabTwoScreen() {
+  const [refreshing, setRefreshing] = React.useState(false);
+  const [title, setTitle] = useState("");
+  const [notesView, setNotesView] = useState<Note[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const db = useSQLiteContext();
+
+  interface Note {
+    id: number;
+    title: string;
+    content: string;
+    date: string;
+    time: string;
+    createdAt: string;
+  }
+
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 2000);
+  }, []);
+
+  const getNotes = async (query = "") => {
+    try {
+      let notes;
+      if (query) {
+        // Поиск по названию или дате
+        notes = await db.getAllAsync<Note>(
+          `SELECT * FROM notes 
+         WHERE title LIKE ? OR date LIKE ?
+         ORDER BY createdAt DESC`,
+          [`%${query}%`, `%${query}%`]
+        );
+      }
+      // } else {
+      //   // Получить все заметки если запрос пустой
+      //   notes = await db.getAllAsync<Note>(
+      //     "SELECT * FROM notes ORDER BY createdAt DESC"
+      //   );
+      // }
+      setNotesView(notes || []);
+      console.log(notesView)
+    } catch (error) {
+      console.error("Ошибка при загрузке заметок:", error);
+      setNotesView([]);
+    }
+  };
+
+  useEffect(() => {
+    getNotes();
+  }, []);
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Explore</ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image source={require('@/assets/images/react-logo.png')} style={{ alignSelf: 'center' }} />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Custom fonts">
-        <ThemedText>
-          Open <ThemedText type="defaultSemiBold">app/_layout.tsx</ThemedText> to see how to load{' '}
-          <ThemedText style={{ fontFamily: 'SpaceMono' }}>
-            custom fonts such as this one.
-          </ThemedText>
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/versions/latest/sdk/font">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful <ThemedText type="defaultSemiBold">react-native-reanimated</ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
+    <SafeAreaProvider>
+      <SafeAreaView>
+        <ScrollView
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
+          <Image
+            style={styles.findLogo}
+            source={require("../../assets/images/vzglyad-lupa-lyudi-paren-glaz.jpg")}
+          />
+
+          <Text style={styles.title}>Найди свои заметки</Text>
+          <Text style={styles.modalText}>Введите слово или дату</Text>
+          <TextInput
+            style={styles.input}
+            value={searchQuery}
+            onChangeText={(text) => {
+              setSearchQuery(text);
+              getNotes(text); // Вызываем поиск при каждом изменении текста
+            }}
+            placeholder="Поиск по названию или дате (ГГГГ-ММ-ДД)"
+            keyboardType="default"
+            autoCorrect={true}
+            autoCapitalize="none"
+            returnKeyType="search"
+            blurOnSubmit={true}
+            onSubmitEditing={() => getNotes(searchQuery)}
+          />
+          {searchQuery ? (
+  <TouchableOpacity 
+    style={styles.clearButton}
+    onPress={() => {
+      setSearchQuery('');
+      getNotes();
+    }}
+  >
+    <Text>Очистить</Text>
+  </TouchableOpacity>
+) : null}
+
+  {/* Отображение результатов поиска */}
+        <View style={styles.resultsContainer}>
+          {notesView.length > 0 ? (
+            <FlatList
+              data={notesView}
+              scrollEnabled={false} // Отключаем скролл, так как он уже есть в ScrollView
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item }) => (
+                <View style={styles.noteItem}>
+                  <Text style={styles.noteTitle}>{item.title}</Text>
+                  <Text style={styles.noteContent}>{item.content}</Text>
+                  <View style={styles.noteFooter}>
+                    <Text style={styles.noteDate}>{item.date}</Text>
+                    <Text style={styles.noteTime}>{item.time}</Text>
+                  </View>
+                </View>
+              )}
+            />
+          ) : searchQuery ? (
+            <Text style={styles.noResultsText}>Ничего не найдено</Text>
+          ) : null}
+        </View>
+        </ScrollView>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
   headerImage: {
-    color: '#808080',
+    color: "#808080",
     bottom: -90,
     left: -35,
+    position: "absolute",
+  },
+  findLogo: {
+    width: "100%",
+    height: 200,
+  },
+  input: {
+    width: "100%",
+    height: 40,
+    marginVertical: 10,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    padding: 10,
+  },
+  title: {
+    fontSize: 22,
+    textAlign: "center",
+    marginVertical: 10,
+  },
+  modalText: {
+    marginTop: 20,
+    marginBottom: 8,
+    textAlign: "left",
+    fontWeight: "bold",
+  },
+
+  clearButton: {
     position: 'absolute',
+    right: 25,
+    top: 20,
+    padding: 8,
   },
-  titleContainer: {
+  searchContainer: {
     flexDirection: 'row',
-    gap: 8,
+    alignItems: 'center',
+    paddingHorizontal: 12,
   },
+
+   container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  searchInputContainer: {
+    marginTop: 16,
+  },
+
+  clearButtonText: {
+    color: '#888',
+  },
+  resultsContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  noteItem: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  noteTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  noteContent: {
+    fontSize: 16,
+    marginBottom: 8,
+    color: '#555',
+  },
+  noteFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  noteDate: {
+    fontSize: 14,
+    color: '#888',
+  },
+  noteTime: {
+    fontSize: 14,
+    color: '#888',
+  },
+  noResultsText: {
+    textAlign: 'center',
+    marginTop: 32,
+    fontSize: 16,
+    color: '#888',
+  },
+  // scrollView: {
+  //   flex: 1,
+  //   backgroundColor: 'pink',
+  //   alignItems: 'center',
+  //   justifyContent: 'center',
+  // },
 });

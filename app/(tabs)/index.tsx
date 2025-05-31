@@ -25,11 +25,14 @@ import {
   Pressable,
   View,
   TextInput,
+  Button,
   TouchableWithoutFeedback,
   TouchableOpacity,
   FlatList,
   ScrollView,
 } from "react-native";
+import * as FileSystem from "expo-file-system";
+import * as Sharing from "expo-sharing";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import DateTimePickerExample from "../../components/dateComponent/date";
 import Collapsible from "react-native-collapsible";
@@ -74,8 +77,6 @@ export default function HomeScreen() {
   useEffect(() => {
     getNotes();
   }, []);
-
-  
 
   async function addNote() {
     try {
@@ -139,6 +140,83 @@ export default function HomeScreen() {
       console.error("Error adding note:", error);
     }
   }
+// Путь к директории для хранения заметок
+const notesDirectory = `${FileSystem.documentDirectory}notes/`;
+const allNotesFilename = `${notesDirectory}all_notes.txt`; // Имя файла для всех заметок
+
+// Создание директории, если её нет
+const ensureDirExists = async () => {
+  const dirInfo = await FileSystem.getInfoAsync(notesDirectory);
+  if (!dirInfo.exists) {
+    await FileSystem.makeDirectoryAsync(notesDirectory, {
+      intermediates: true,
+    });
+  }
+};
+
+// Сохранение всех заметок в один файл (с перезаписью)
+const saveAllNotesToFile = async () => {
+  try {
+    await ensureDirExists();
+
+    // Создаем строку со всеми заметками
+    let notesContent = "";
+    notesView.forEach((note) => {
+      notesContent += `=== Заметка ${note.id} ===\n`;
+      notesContent += `Заголовок: ${note.title}\n`;
+      notesContent += `Дата: ${note.date}\n`;
+      notesContent += `Время: ${note.time}\n`;
+      notesContent += `Создано: ${note.createdAt}\n`;
+      notesContent += `Содержание:\n${note.content}\n\n`;
+    });
+
+    // Сохраняем в файл (перезаписываем существующий)
+    await FileSystem.writeAsStringAsync(allNotesFilename, notesContent, {
+      encoding: FileSystem.EncodingType.UTF8,
+    });
+
+    Alert.alert("Успех", "Все заметки сохранены в файл");
+    console.log("Успех", "Все заметки сохранены в файл");
+    return allNotesFilename;
+  } catch (error) {
+    console.error("Ошибка при сохранении заметок:", error);
+    Alert.alert("Ошибка", "Не удалось сохранить заметки");
+    throw error;
+  }
+};
+
+
+const shareExistingNotes = async () => {
+  try {
+    await ensureDirExists(); // Убедимся, что директория существует
+    
+    const fileInfo = await FileSystem.getInfoAsync(allNotesFilename);
+
+    if(!fileInfo.exists) {
+      Alert.alert("Ошибка", "Файл с заметками не существует. Сначала сохраните заметки.");
+      return;
+    }
+
+    // Проверяем доступность функции "Поделиться"
+    if (!(await Sharing.isAvailableAsync())) {
+      Alert.alert(
+        "Ошибка",
+        "Функция 'Поделиться' недоступна на этом устройстве"
+      );
+      return;
+    }
+
+    // Показываем диалог "Поделиться"
+    await Sharing.shareAsync(allNotesFilename, {
+      mimeType: "text/plain", // Указываем MIME-тип файла
+      dialogTitle: "Поделиться заметками", // Заголовок диалога
+      UTI: "public.plain-text", // Uniform Type Identifier для iOS
+    });
+  } catch (error) {
+    console.error("Ошибка при попытке поделиться:", error);
+    Alert.alert("Ошибка", "Не удалось поделиться файлом");
+  }
+};
 
   return (
     <SafeAreaProvider>
@@ -157,6 +235,14 @@ export default function HomeScreen() {
                 onPress={() => setModalVisible(true)}
               >
                 <Text style={styles.textStyle}>Добавить заметку</Text>
+              </Pressable>
+
+              <Pressable style={[styles.button, styles.buttonOpen]} onPress={saveAllNotesToFile}>
+                <Text style={styles.textStyle}>Сохраниь в файл</Text>
+              </Pressable>
+
+              <Pressable style={[styles.button, styles.buttonOpen]} onPress={shareExistingNotes}>
+                <Text style={styles.textStyle}>Экспорт и поделиться</Text>
               </Pressable>
             </>
           }
@@ -194,7 +280,7 @@ export default function HomeScreen() {
                     placeholder="Введите заголовок"
                     keyboardType="default"
                     autoCorrect={true}
-                    returnKeyType="done" 
+                    returnKeyType="done"
                     autoCapitalize="sentences"
                   />
                   <Text style={styles.modalText}>Введите содержание</Text>
@@ -205,7 +291,7 @@ export default function HomeScreen() {
                     placeholder="Введите содержание"
                     keyboardType="default"
                     autoCorrect={true}
-                    returnKeyType="done" 
+                    returnKeyType="done"
                     autoCapitalize="sentences"
                     multiline
                   />
@@ -247,11 +333,8 @@ export default function HomeScreen() {
                 keyboardType="default"
                 autoCorrect={true}
                 autoCapitalize="sentences"
-                
-  
- 
-  returnKeyType="done" // Добавляем кнопку "Готово"
-  blurOnSubmit={true} // Сворачивает клавиатуру при нажатии "Готово"
+                returnKeyType="done" // Добавляем кнопку "Готово"
+                blurOnSubmit={true} // Сворачивает клавиатуру при нажатии "Готово"
               />
 
               <Text style={styles.modalText}>Введите содержание</Text>
@@ -263,9 +346,9 @@ export default function HomeScreen() {
                 keyboardType="default"
                 autoCorrect={true}
                 autoCapitalize="sentences"
-                returnKeyType="done" 
+                returnKeyType="done"
                 multiline
- blurOnSubmit={false} //
+                blurOnSubmit={false} //
               />
 
               <DateTimePickerExample date={date} onDateChange={setDate} />
